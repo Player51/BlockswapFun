@@ -33,6 +33,12 @@ body {
   padding: 14px;
 }
 
+html, body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 /* ---------- MODE SELECT ---------- */
 #modeSelect {
   display: flex;
@@ -58,6 +64,7 @@ body {
   padding: 14px;
   box-shadow: 0 14px 30px var(--shadow);
   width: 320px;
+  touch-action: none;
 }
 
 /* ---------- BOARD ---------- */
@@ -68,6 +75,7 @@ body {
   width: 100%;
   aspect-ratio: 1;
   margin-bottom: 14px;
+  touch-action: none;
 }
 
 /* ---------- TILES ---------- */
@@ -79,6 +87,7 @@ body {
   user-select: none;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  touch-action: none;
 }
 
 .cell:active {
