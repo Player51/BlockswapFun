@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Color Block Puzzle</title>
+
+<style>
+:root {
+  --page-bg: #ffffff;
+  --container-bg: #f3f3f3;
+  --shadow: rgba(0,0,0,0.12);
+
+  --red: #e07a6a;
+  --blue: #6c7aa1;
+  --green: #8fbfb1;
+  --yellow: #f2d28b;
+}
+
+* {
+  box-sizing: border-box;
+  touch-action: manipulation;
+}
+
+body {
+  margin: 0;
+  background: var(--page-bg);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 14px;
+}
+
+/* ---------- MODE SELECT ---------- */
+#modeSelect {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  justify-content: center;
+}
+
+#modeSelect button {
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: none;
+  background: #ffffff;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ---------- CONTAINER ---------- */
+#boardContainer {
+  background: var(--container-bg);
+  border-radius: 22px;
+  padding: 14px;
+  box-shadow: 0 14px 30px var(--shadow);
+  width: 320px;
+}
+
+/* ---------- BOARD ---------- */
+#board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+  aspect-ratio: 1;
+  margin-bottom: 14px;
+}
+
+/* ---------- TILES ---------- */
+.cell {
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.cell:active {
+  transform: scale(1.05);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.25);
+}
+
+.color0 { background: var(--red); }
+.color1 { background: var(--blue); }
+.color2 { background: var(--green); }
+.color3 { background: var(--yellow); }
+
+/* ---------- HARD MODE (GRAY) ---------- */
+#board.hard .cell {
+  background: #e5e6e6 !important;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05),
+              0 3px 8px rgba(0,0,0,0.15);
+}
+
+/* ---------- CONTROLS ---------- */
+#controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+#controls button {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
+  background: #ffffff;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#movesDisplay {
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+/* ---------- INSTRUCTIONS ---------- */
+#instructions {
+  max-width: 320px;
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.65;
+  margin-top: 14px;
+}
+
+/* ---------- WIN OVERLAY ---------- */
+#winOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 10;
+}
+
+#winOverlay.show {
+  visibility: visible;
+  opacity: 1;
+}
+
+#winOverlay div {
+  background: white;
+  padding: 26px 32px;
+  border-radius: 20px;
+  text-align: center;
+  font-size: 1.4rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+#winOverlay button {
+  margin-top: 14px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  background: var(--green);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div>
+  <div id="modeSelect">
+    <button onclick="setMode('normal')">Normal</button>
+    <button onclick="setMode('hard')">Extreme</button>
+  </div>
+
+  <div id="boardContainer">
+    <div id="board"></div>
+
+    <div id="controls">
+      <button onclick="initBoard()">Restart</button>
+      <button id="hintBtn" onclick="showHint()" style="display:none;">Hint</button>
+      <div id="movesDisplay">Moves: 0</div>
+    </div>
+  </div>
+
+  <p id="instructions">
+    Swipe tiles to swap with neighbors.<br>
+    Create four solid 2×2 color blocks.
+  </p>
+</div>
+
+<!-- WIN OVERLAY -->
+<div id="winOverlay">
+  <div>
+    🎉 You Won!
+    <div id="movesInfo" style="margin-top:10px;font-size:1.1rem;opacity:.8;"></div>
+    <button onclick="initBoard()">Restart</button>
+  </div>
+</div>
+
+<script>
+const size = 4;
+let board = [];
+let moves = 0;
+let hardMode = false;
+let firstMoveMade = false;
+let hintActive = false;
+
+function setMode(mode) {
+  hardMode = mode === "hard";
+  document.getElementById("hintBtn").style.display = hardMode ? "block" : "none";
+  initBoard();
+}
+
+function initBoard(){
+  board = [];
+  moves = 0;
+  firstMoveMade = false;
+  hintActive = false;
+  updateMoves();
+
+  const boardEl = document.getElementById("board");
+  boardEl.classList.remove("hard");
+
+  for(let i=0;i<size;i++){
+    for(let j=0;j<size;j++){
+      board.push(i<2 ? (j<2 ? 0 : 1) : (j<2 ? 2 : 3));
+    }
+  }
+
+  for(let i=board.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [board[i],board[j]]=[board[j],board[i]];
+  }
+
+  renderBoard();
+  hideWin();
+}
+
+function updateMoves(){
+  document.getElementById("movesDisplay").textContent = `Moves: ${moves}`;
+}
+
+function renderBoard(){
+  const boardDiv=document.getElementById("board");
+  boardDiv.innerHTML="";
+
+  board.forEach((color,index)=>{
+    const cell=document.createElement("div");
+    cell.className=`cell color${color}`;
+
+    let startX,startY;
+
+    cell.addEventListener("pointerdown",(e)=>{
+      startX=e.clientX;
+      startY=e.clientY;
+      cell.setPointerCapture(e.pointerId);
+    });
+
+    cell.addEventListener("pointerup",(e)=>{
+      const dx=e.clientX-startX;
+      const dy=e.clientY-startY;
+      let dir=null;
+
+      if(Math.abs(dx)>Math.abs(dy)){
+        if(dx>20) dir="right";
+        else if(dx<-20) dir="left";
+      } else {
+        if(dy>20) dir="down";
+        else if(dy<-20) dir="up";
+      }
+
+      if(dir) swipe(index,dir);
+    });
+
+    boardDiv.appendChild(cell);
+  });
+}
+
+function swipe(index,dir){
+  const x=index%size;
+  const y=Math.floor(index/size);
+  let target=null;
+
+  if(dir==="left" && x>0) target=index-1;
+  else if(dir==="right" && x<size-1) target=index+1;
+  else if(dir==="up" && y>0) target=index-size;
+  else if(dir==="down" && y<size-1) target=index+size;
+
+  if(target!==null) animateSwap(index,target);
+}
+
+function animateSwap(i,j){
+  const cells=document.querySelectorAll(".cell");
+  const a=cells[i];
+  const b=cells[j];
+  const rA=a.getBoundingClientRect();
+  const rB=b.getBoundingClientRect();
+  const dx=rB.left-rA.left;
+  const dy=rB.top-rA.top;
+
+  a.style.transform=`translate(${dx}px,${dy}px)`;
+  b.style.transform=`translate(${-dx}px,${-dy}px)`;
+
+  setTimeout(()=>{
+    [board[i],board[j]]=[board[j],board[i]];
+    moves++;
+    updateMoves();
+
+    if(hardMode){
+      if(!firstMoveMade) firstMoveMade = true;
+      hintActive = false;
+      document.getElementById("board").classList.add("hard");
+    }
+
+    renderBoard();
+    checkWin();
+  },250);
+}
+
+function showHint(){
+  if(!hardMode) return;
+  hintActive = true;
+  document.getElementById("board").classList.remove("hard");
+}
+
+function checkWin(){
+  for(let i=0;i<size;i+=2){
+    for(let j=0;j<size;j+=2){
+      const c=board[i*size+j];
+      if(board[i*size+j+1]!==c ||
+         board[(i+1)*size+j]!==c ||
+         board[(i+1)*size+j+1]!==c) return;
+    }
+  }
+  showWin();
+}
+
+function showWin(){
+  document.getElementById("movesInfo").textContent=`Moves: ${moves}`;
+  document.getElementById("winOverlay").classList.add("show");
+}
+
+function hideWin(){
+  document.getElementById("winOverlay").classList.remove("show");
+}
+
+initBoard();
+</script>
+
+</body>
+</html>
