@@ -1,0 +1,16 @@
+{
+    "name": "Color Block Puzzle",
+    "short_name": "Blocks",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#3d405b",
+    "icons": [
+      {
+        "src": "icon-512.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+  }
+  
